@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Status - Homelab Services</title>
+    <meta name="description" content="Real-time status and uptime monitoring for homelab services">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+            background: #0a0a0a;
+            color: #ffffff;
+            min-height: 100vh;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            padding: 48px 0 32px;
+            border-bottom: 1px solid #1f1f1f;
+        }
+
+        .header h1 {
+            font-size: 2.25rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            letter-spacing: -0.025em;
+        }
+
+        .header p {
+            color: #888;
+            font-size: 1rem;
+        }
+
+        /* Main Status Indicator */
+        .status-hero {
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 32px;
+            margin: 32px 0;
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .status-indicator {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            flex-shrink: 0;
+        }
+
+        .status-indicator.operational {
+            background: #22c55e;
+            box-shadow: 0 0 20px rgba(34, 197, 94, 0.3);
+        }
+
+        .status-indicator.partial {
+            background: #f59e0b;
+            box-shadow: 0 0 20px rgba(245, 158, 11, 0.3);
+        }
+
+        .status-indicator.major {
+            background: #ef4444;
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
+        }
+
+        .status-content h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .status-content p {
+            color: #888;
+            font-size: 0.875rem;
+        }
+
+        /* Components Grid */
+        .components-section {
+            margin: 48px 0;
+        }
+
+        .components-section h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 24px;
+            color: #fff;
+        }
+
+        .components-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 16px;
+        }
+
+        .component {
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 20px;
+            transition: all 0.2s ease;
+        }
+
+        .component:hover {
+            border-color: #555;
+            transform: translateY(-1px);
+        }
+
+        .component.up { border-left: 3px solid #22c55e; }
+        .component.degraded { border-left: 3px solid #f59e0b; }
+        .component.down { border-left: 3px solid #ef4444; }
+
+        .component-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .component-name {
+            font-size: 1rem;
+            font-weight: 500;
+            color: #fff;
+        }
+
+        .component-status {
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .component-status.operational {
+            background: #22c55e;
+            color: #fff;
+        }
+
+        .component-status.degraded {
+            background: #f59e0b;
+            color: #fff;
+        }
+
+        .component-status.major_outage {
+            background: #ef4444;
+            color: #fff;
+        }
+
+        .component-metrics {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .timeline-bar {
+            margin-top: 12px;
+            height: 4px;
+            background: #333;
+            border-radius: 2px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .timeline-fill {
+            height: 100%;
+            background: #22c55e;
+            transition: width 0.3s ease;
+            border-radius: 2px;
+        }
+
+        .timeline-fill.warning {
+            background: #f59e0b;
+        }
+
+        .timeline-fill.danger {
+            background: #ef4444;
+        }
+
+        .metric {
+            text-align: center;
+        }
+
+        .metric-label {
+            font-size: 0.75rem;
+            color: #888;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .metric-value {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .metric-value.good { color: #22c55e; }
+        .metric-value.warning { color: #f59e0b; }
+        .metric-value.bad { color: #ef4444; }
+
+        /* Timeline Section */
+        .timeline-section {
+            margin: 48px 0;
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 32px;
+        }
+
+        .timeline-section h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 24px;
+            color: #fff;
+        }
+
+        .timeline {
+            position: relative;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 24px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #333;
+        }
+
+        .timeline-item {
+            position: relative;
+            padding-left: 64px;
+            margin-bottom: 32px;
+        }
+
+        .timeline-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .timeline-marker {
+            position: absolute;
+            left: 20px;
+            top: 0;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 2px solid #333;
+            background: #0a0a0a;
+        }
+
+        .timeline-marker.resolved {
+            background: #22c55e;
+            border-color: #22c55e;
+        }
+
+        .timeline-marker.ongoing {
+            background: #ef4444;
+            border-color: #ef4444;
+        }
+
+        .timeline-content {
+            background: #1a1a1a;
+            border-radius: 8px;
+            padding: 16px;
+            border: 1px solid #333;
+        }
+
+        .timeline-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .timeline-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .timeline-badge {
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .timeline-badge.ongoing {
+            background: #ef4444;
+            color: #fff;
+        }
+
+        .timeline-badge.resolved {
+            background: #22c55e;
+            color: #fff;
+        }
+
+        .timeline-time {
+            color: #888;
+            font-size: 0.75rem;
+            margin-bottom: 8px;
+        }
+
+        .timeline-description {
+            color: #ccc;
+            font-size: 0.875rem;
+            line-height: 1.5;
+        }
+
+        /* Loading & Error */
+        .loading {
+            text-align: center;
+            padding: 80px 40px;
+            color: #888;
+            font-size: 1rem;
+        }
+
+        .error {
+            background: #111;
+            color: #ef4444;
+            padding: 24px;
+            border-radius: 8px;
+            text-align: center;
+            margin: 32px auto;
+            max-width: 500px;
+            border: 1px solid #333;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 0 16px;
+            }
+
+            .header h1 {
+                font-size: 1.75rem;
+            }
+
+            .status-hero {
+                padding: 24px;
+                gap: 16px;
+            }
+
+            .status-indicator {
+                width: 40px;
+                height: 40px;
+                font-size: 20px;
+            }
+
+            .components-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Service Status</h1>
+            <p>Real-time monitoring of homelab services</p>
+        </div>
+
+        <div id="app">
+            <div class="loading">Loading status...</div>
+        </div>
+
+    </div>
+
+    <script>
+        const API_URL = '/api';
+        let services = [];
+        let incidents = [];
+
+        async function fetchStatus() {
+            try {
+                const [servicesRes, incidentsRes] = await Promise.all([
+                    fetch(`${API_URL}/services`),
+                    fetch(`${API_URL}/incidents?limit=10`)
+                ]);
+
+                if (!servicesRes.ok || !incidentsRes.ok) {
+                    throw new Error('Failed to fetch status data');
+                }
+
+                services = await servicesRes.json();
+                incidents = await incidentsRes.json();
+                render();
+            } catch (error) {
+                renderError(error.message);
+            }
+        }
+
+        function getStatusClass(status) {
+            if (status === 'up') return 'operational';
+            if (status === 'degraded') return 'degraded';
+            return 'major_outage';
+        }
+
+        function getUptimeClass(uptime) {
+            if (uptime >= 99.9) return 'good';
+            if (uptime >= 95) return 'warning';
+            return 'bad';
+        }
+
+        function getTimelineClass(uptime) {
+            if (uptime >= 99.9) return 'good';
+            if (uptime >= 95) return 'warning';
+            return 'danger';
+        }
+
+        function formatDuration(seconds) {
+            if (!seconds) return 'Ongoing';
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            if (hours > 0) return `${hours}h ${minutes}m`;
+            return `${minutes}m`;
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            const now = new Date();
+            const diffMs = now - date;
+            const diffMins = Math.floor(diffMs / 60000);
+
+            if (diffMins < 1) return 'Just now';
+            if (diffMins < 60) return `${diffMins}m ago`;
+
+            const diffHours = Math.floor(diffMins / 60);
+            if (diffHours < 24) return `${diffHours}h ago`;
+
+            const diffDays = Math.floor(diffHours / 24);
+            return `${diffDays}d ago`;
+        }
+
+        function render() {
+            const allOperational = services.every(s => s.status === 'up');
+            const hasIncidents = services.some(s => s.current_incident);
+            const systemStatus = allOperational && !hasIncidents ? 'operational' : hasIncidents ? 'major' : 'partial';
+
+            let html = '';
+
+            // Main Status Indicator
+            const statusIcon = allOperational && !hasIncidents ? '✓' : hasIncidents ? '⚠' : '●';
+            const statusText = allOperational && !hasIncidents
+                ? 'All Systems Operational'
+                : hasIncidents ? 'Major Outage' : 'Partial Outage';
+
+            html += `
+                <div class="status-hero">
+                    <div class="status-indicator ${systemStatus}">${statusIcon}</div>
+                    <div class="status-content">
+                        <h2>${statusText}</h2>
+                        <p>Last updated: ${new Date().toLocaleString()}</p>
+                    </div>
+                </div>
+            `;
+
+            // Components Grid
+            html += '<div class="components-section">';
+            html += '<div class="components-grid">';
+
+            services.forEach(service => {
+                const statusClass = getStatusClass(service.status);
+                const uptimeClass = getUptimeClass(service.uptime_24h);
+                const timelineClass = getTimelineClass(service.uptime_24h);
+
+                html += `
+                    <div class="component ${service.status}">
+                        <div class="component-header">
+                            <div class="component-name">${service.name}</div>
+                            <div class="component-status ${statusClass}">${service.status}</div>
+                        </div>
+                        ${service.current_incident ? `
+                            <div style="color: #ef4444; font-size: 0.875rem; margin-bottom: 8px;">
+                                ⚠ ${service.current_incident.description}
+                            </div>
+                        ` : ''}
+                        <div class="timeline-bar">
+                            <div class="timeline-fill ${timelineClass}" style="width: ${service.uptime_24h}%"></div>
+                        </div>
+                        <div class="component-metrics">
+                            <div class="metric">
+                                <div class="metric-label">24h Uptime</div>
+                                <div class="metric-value ${uptimeClass}">
+                                    ${service.uptime_24h.toFixed(1)}%
+                                </div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-label">7d Uptime</div>
+                                <div class="metric-value ${getUptimeClass(service.uptime_7d)}">
+                                    ${service.uptime_7d.toFixed(1)}%
+                                </div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-label">30d Uptime</div>
+                                <div class="metric-value ${getUptimeClass(service.uptime_30d)}">
+                                    ${service.uptime_30d.toFixed(1)}%
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += '</div></div>';
+
+            // Timeline Section
+            if (incidents.length > 0) {
+                html += '<div class="timeline-section">';
+                html += '<h2>Recent Incidents</h2>';
+                html += '<div class="timeline">';
+
+                incidents.forEach(incident => {
+                    html += `
+                        <div class="timeline-item">
+                            <div class="timeline-marker ${incident.status}"></div>
+                            <div class="timeline-content">
+                                <div class="timeline-header">
+                                    <div class="timeline-title">${incident.service_name}</div>
+                                    <div class="timeline-badge ${incident.status}">${incident.status}</div>
+                                </div>
+                                <div class="timeline-time">${formatDate(incident.started_at)}</div>
+                                ${incident.description ? `<div class="timeline-description">${incident.description}</div>` : ''}
+                            </div>
+                        </div>
+                    `;
+                });
+
+                html += '</div></div>';
+            }
+
+            document.getElementById('app').innerHTML = html;
+        }
+
+        function renderError(message) {
+            document.getElementById('app').innerHTML = `
+                <div class="error">
+                    <h2>Error Loading Status</h2>
+                    <p>${message}</p>
+                </div>
+            `;
+        }
+
+        // Initial fetch
+        fetchStatus();
+
+        // Auto-refresh every 60 seconds
+        setInterval(fetchStatus, 60000);
+    </script>
+</body>
+</html>

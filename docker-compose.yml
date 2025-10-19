@@ -18,12 +18,12 @@ services:
     networks: [proxy]
     labels:
       - traefik.enable=true
-      - traefik.http.routers.status-service.rule=Host(`status.kadenbilyeu.com`) || Host(`status.bikatr7.com`)
+      - traefik.http.routers.status-service.rule=Host(`status.kadenbilyeu.com`) || Host(`status.bikatr7.com`) || Host(`status.kakusui.org`) || Host(`status.easytl.org`) || Host(`status.tetragroup.io`)
       - traefik.http.routers.status-service.entrypoints=web
       - traefik.http.services.status-service.loadbalancer.server.port=8000
       - traefik.http.middlewares.status-cors.headers.accesscontrolallowmethods=GET,POST,PUT,DELETE,OPTIONS
       - traefik.http.middlewares.status-cors.headers.accesscontrolallowheaders=Authorization,Content-Type,X-Requested-With
-      - traefik.http.middlewares.status-cors.headers.accesscontrolalloworiginlist=https://kadenbilyeu.com,https://status.kadenbilyeu.com,https://status.bikatr7.com,https://bikatr7.com
+      - traefik.http.middlewares.status-cors.headers.accesscontrolalloworiginlist=https://kadenbilyeu.com,https://status.kadenbilyeu.com,https://status.bikatr7.com,https://bikatr7.com,https://kakusui.org,https://status.kakusui.org,https://easytl.org,https://status.easytl.org,https://tetragroup.io,https://status.tetragroup.io
       - traefik.http.middlewares.status-cors.headers.accesscontrolallowcredentials=true
       - traefik.http.routers.status-service.middlewares=status-cors@docker
 

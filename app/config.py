@@ -12,43 +12,57 @@ class Settings(BaseSettings):
             "name": "Personal Website (kadenbilyeu.com)",
             "url": "https://kadenbilyeu.com",
             "check_type": "http",
-            "expected_status": "200"
+            "expected_status": "200",
+            "domains": "kadenbilyeu.com,bikatr7.com"
         },
         {
             "name": "Personal Website (bikatr7.com)",
             "url": "https://bikatr7.com",
             "check_type": "http",
-            "expected_status": "200"
+            "expected_status": "200",
+            "domains": "kadenbilyeu.com,bikatr7.com"
         },
         {
-            "name": "Personal Website API (kadenbilyeu.com)",
+            "name": "Personal Website API (api.kadenbilyeu.com)",
             "url": "https://api.kadenbilyeu.com",
             "check_type": "http",
-            "expected_status": "200"
+            "expected_status": "200",
+            "domains": "kadenbilyeu.com,bikatr7.com"
         },
         {
-            "name": "Git (kadenbilyeu.com)",
+            "name": "Git (git.kadenbilyeu.com)",
             "url": "https://git.kadenbilyeu.com",
             "check_type": "http",
-            "expected_status": "200"
+            "expected_status": "200",
+            "domains": "kadenbilyeu.com,bikatr7.com"
         },
         {
-            "name": "Git (bikatr7.com)",
+            "name": "Git (git.bikatr7.com)",
             "url": "https://git.bikatr7.com",
             "check_type": "http",
-            "expected_status": "200"
+            "expected_status": "200",
+            "domains": "kadenbilyeu.com,bikatr7.com"
         },
         {
-            "name": "Kakusui Website (kakusui.org)",
-            "url": "https://kakusui.org",
-            "check_type": "http",
-            "expected_status": "200"
-        },
-        {
-            "name": "Kakusui API (kakusui.org)",
+            "name": "Kakusui API (api.kakusui.org)",
             "url": "https://api.kakusui.org",
             "check_type": "http",
-            "expected_status": "200"
+            "expected_status": "200",
+            "domains": "kadenbilyeu.com,bikatr7.com,kakusui.org,easytl.org"
+        },
+        {
+            "name": "EasyTL Website (easytl.org)",
+            "url": "https://easytl.org",
+            "check_type": "http",
+            "expected_status": "200",
+            "domains": "kadenbilyeu.com,bikatr7.com,easytl.org"
+        },
+        {
+            "name": "TetraGroup Website (tetragroup.io)",
+            "url": "https://tetragroup.io",
+            "check_type": "http",
+            "expected_status": "200",
+            "domains": "kadenbilyeu.com,bikatr7.com,tetragroup.io"
         },
     ]
 

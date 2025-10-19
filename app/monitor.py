@@ -74,9 +74,14 @@ async def handle_incident(db: AsyncSession, service: Service, current_status: st
     else:
         if latest_incident and latest_incident.status == "ongoing":
             latest_incident.ended_at = datetime.utcnow()
-            latest_incident.duration = int((latest_incident.ended_at - latest_incident.started_at).total_seconds())
+            duration = int((latest_incident.ended_at - latest_incident.started_at).total_seconds())
+            latest_incident.duration = duration
             latest_incident.status = "resolved"
-            logger.info(f"Incident resolved for {service.name} (duration: {latest_incident.duration}s)")
+
+            if duration >= 60:
+                logger.info(f"Incident resolved for {service.name} (duration: {duration}s)")
+            else:
+                logger.info(f"Short incident resolved for {service.name} (duration: {duration}s, won't count against uptime)")
 
 async def run_health_checks():
     async with AsyncSessionLocal() as db:

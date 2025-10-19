@@ -1,8 +1,8 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Boolean, Text
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Boolean, Text, text
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import declarative_base, relationship
 from datetime import datetime
-from app.config import settings
+from config import settings
 
 Base = declarative_base()
 
@@ -14,6 +14,7 @@ class Service(Base):
     url = Column(String, nullable=False)
     check_type = Column(String, nullable=False)
     expected_status = Column(String, nullable=False)
+    domains = Column(Text, nullable=True)
     enabled = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -49,9 +50,26 @@ class Incident(Base):
 engine = create_async_engine(settings.DATABASE_URL, echo=False)
 AsyncSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
+async def run_migrations(conn):
+    """Run database migrations"""
+    def _run_migrations(sync_conn):
+        try:
+            result = sync_conn.execute(
+                text("SELECT sql FROM sqlite_master WHERE type='table' AND name='services'")
+            ).fetchone()
+
+            if result and 'domains' not in result[0]:
+                sync_conn.execute(text("ALTER TABLE services ADD COLUMN domains TEXT"))
+                print("Migration: Added 'domains' column to services table")
+        except Exception as e:
+            print(f"Migration error: {e}")
+
+    await conn.run_sync(_run_migrations)
+
 async def init_db():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await run_migrations(conn)
 
 async def get_db():
     async with AsyncSessionLocal() as session:

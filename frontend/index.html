@@ -219,124 +219,190 @@
         .metric-value.warning { color: #f59e0b; }
         .metric-value.bad { color: #ef4444; }
 
-        /* Timeline Section */
+        /* Incidents Section */
         .timeline-section {
             margin: 48px 0;
-            background: #111;
-            border: 1px solid #333;
-            border-radius: 12px;
-            padding: 32px;
         }
 
         .timeline-section h2 {
             font-size: 1.25rem;
             font-weight: 600;
-            margin-bottom: 24px;
+            margin-bottom: 32px;
             color: #fff;
         }
 
-        .timeline {
-            position: relative;
+        .day-group {
+            margin-bottom: 48px;
         }
 
-        .timeline::before {
-            content: '';
-            position: absolute;
-            left: 24px;
-            top: 0;
-            bottom: 0;
-            width: 2px;
-            background: #333;
-        }
-
-        .timeline-item {
-            position: relative;
-            padding-left: 64px;
-            margin-bottom: 32px;
-        }
-
-        .timeline-item:last-child {
+        .day-group:last-child {
             margin-bottom: 0;
         }
 
-        .timeline-marker {
-            position: absolute;
-            left: 20px;
-            top: 0;
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            border: 2px solid #333;
-            background: #0a0a0a;
+        .day-separator {
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #2a2a2a;
         }
 
-        .timeline-marker.resolved {
-            background: #22c55e;
-            border-color: #22c55e;
+        .day-separator h3 {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin: 0;
         }
 
-        .timeline-marker.ongoing {
-            background: #ef4444;
-            border-color: #ef4444;
-        }
-
-        .timeline-content {
-            background: #1a1a1a;
+        .incident-card {
+            background: #111;
+            border: 1px solid #2a2a2a;
             border-radius: 8px;
-            padding: 16px;
-            border: 1px solid #333;
+            padding: 16px 20px;
+            margin-bottom: 12px;
+            transition: all 0.2s ease;
         }
 
-        .timeline-header {
+        .incident-card:last-child {
+            margin-bottom: 0;
+        }
+
+        .incident-card:hover {
+            border-color: #3a3a3a;
+            transform: translateX(2px);
+        }
+
+        .incident-card.resolved {
+            border-left: 3px solid #22c55e;
+        }
+
+        .incident-card.ongoing {
+            border-left: 3px solid #ef4444;
+        }
+
+        .incident-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 8px;
         }
 
-        .timeline-title {
-            font-size: 0.875rem;
+        .incident-service {
+            font-size: 0.9375rem;
             font-weight: 600;
             color: #fff;
         }
 
-        .timeline-badge {
-            padding: 2px 8px;
+        .incident-badge {
+            padding: 4px 10px;
             border-radius: 4px;
-            font-size: 0.75rem;
+            font-size: 0.6875rem;
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.05em;
         }
 
-        .timeline-badge.ongoing {
-            background: #ef4444;
-            color: #fff;
+        .incident-badge.ongoing {
+            background: rgba(239, 68, 68, 0.15);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
         }
 
-        .timeline-badge.resolved {
-            background: #22c55e;
-            color: #fff;
+        .incident-badge.resolved {
+            background: rgba(34, 197, 94, 0.15);
+            color: #22c55e;
+            border: 1px solid rgba(34, 197, 94, 0.3);
         }
 
-        .timeline-time {
+        .incident-meta {
+            display: flex;
+            gap: 16px;
+            font-size: 0.8125rem;
             color: #888;
-            font-size: 0.75rem;
-            margin-bottom: 8px;
         }
 
-        .timeline-description {
-            color: #ccc;
-            font-size: 0.875rem;
-            line-height: 1.5;
+        .incident-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .incident-duration {
+            font-weight: 500;
+        }
+
+        .incident-duration.short {
+            color: #22c55e;
+        }
+
+        .incident-duration.medium {
+            color: #f59e0b;
+        }
+
+        .incident-duration.long {
+            color: #ef4444;
         }
 
         /* Loading & Error */
         .loading {
             text-align: center;
-            padding: 80px 40px;
+            padding: 120px 40px;
             color: #888;
             font-size: 1rem;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 48px;
+            height: 48px;
+            margin-bottom: 24px;
+        }
+
+        .loading-spinner::after {
+            content: "";
+            display: block;
+            width: 40px;
+            height: 40px;
+            margin: 4px;
+            border-radius: 50%;
+            border: 4px solid #333;
+            border-color: #666 transparent #666 transparent;
+            animation: loading-spinner 1.2s linear infinite;
+        }
+
+        @keyframes loading-spinner {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .loading-text {
+            color: #666;
+            font-size: 0.9375rem;
+            font-weight: 500;
+        }
+
+        .loading-dots::after {
+            content: '';
+            animation: loading-dots 1.5s infinite;
+        }
+
+        @keyframes loading-dots {
+            0%, 20% {
+                content: '';
+            }
+            40% {
+                content: '.';
+            }
+            60% {
+                content: '..';
+            }
+            80%, 100% {
+                content: '...';
+            }
         }
 
         .error {
@@ -381,7 +447,10 @@
     <div class="container">
 
         <div id="app">
-            <div class="loading">Loading status...</div>
+            <div class="loading">
+                <div class="loading-spinner"></div>
+                <div class="loading-text">Loading status<span class="loading-dots"></span></div>
+            </div>
         </div>
 
     </div>
@@ -391,11 +460,23 @@
         let services = [];
         let incidents = [];
 
+        // Detect the current domain and extract the base domain
+        function getCurrentDomain() {
+            const hostname = window.location.hostname;
+            // Extract the main domain (e.g., kadenbilyeu.com, kakusui.org, etc.)
+            // Remove 'status.' prefix if present
+            const domain = hostname.replace(/^status\./, '');
+            return domain;
+        }
+
         async function fetchStatus() {
             try {
+                const currentDomain = getCurrentDomain();
+
+                // Fetch services with domain filter
                 const [servicesRes, incidentsRes] = await Promise.all([
-                    fetch(`${API_URL}/services`),
-                    fetch(`${API_URL}/incidents?limit=10`)
+                    fetch(`${API_URL}/services?domain=${encodeURIComponent(currentDomain)}`),
+                    fetch(`${API_URL}/incidents?limit=50&days=30`)
                 ]);
 
                 if (!servicesRes.ok || !incidentsRes.ok) {
@@ -428,10 +509,18 @@
             return 'danger';
         }
 
+        function floorUptime(uptime) {
+            // Always round down to 1 decimal place
+            return (Math.floor(uptime * 10) / 10).toFixed(1);
+        }
+
         function formatDuration(seconds) {
             if (!seconds) return 'Ongoing';
-            const hours = Math.floor(seconds / 3600);
+            const days = Math.floor(seconds / 86400);
+            const hours = Math.floor((seconds % 86400) / 3600);
             const minutes = Math.floor((seconds % 3600) / 60);
+
+            if (days > 0) return `${days}d ${hours}h ${minutes}m`;
             if (hours > 0) return `${hours}h ${minutes}m`;
             return `${minutes}m`;
         }
@@ -450,6 +539,37 @@
 
             const diffDays = Math.floor(diffHours / 24);
             return `${diffDays}d ago`;
+        }
+
+        function formatDateFull(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        function groupIncidentsByDay(incidents) {
+            const groups = {};
+
+            incidents.forEach(incident => {
+                const date = new Date(incident.started_at);
+                const dayKey = date.toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+
+                if (!groups[dayKey]) {
+                    groups[dayKey] = [];
+                }
+                groups[dayKey].push(incident);
+            });
+
+            return groups;
         }
 
         function render() {
@@ -502,19 +622,19 @@
                             <div class="metric">
                                 <div class="metric-label">24h Uptime</div>
                                 <div class="metric-value ${uptimeClass}">
-                                    ${service.uptime_24h.toFixed(1)}%
+                                    ${floorUptime(service.uptime_24h)}%
                                 </div>
                             </div>
                             <div class="metric">
                                 <div class="metric-label">7d Uptime</div>
                                 <div class="metric-value ${getUptimeClass(service.uptime_7d)}">
-                                    ${service.uptime_7d.toFixed(1)}%
+                                    ${floorUptime(service.uptime_7d)}%
                                 </div>
                             </div>
                             <div class="metric">
                                 <div class="metric-label">30d Uptime</div>
                                 <div class="metric-value ${getUptimeClass(service.uptime_30d)}">
-                                    ${service.uptime_30d.toFixed(1)}%
+                                    ${floorUptime(service.uptime_30d)}%
                                 </div>
                             </div>
                         </div>
@@ -524,30 +644,69 @@
 
             html += '</div></div>';
 
-            // Timeline Section
-            if (incidents.length > 0) {
-                html += '<div class="timeline-section">';
-                html += '<h2>Recent Incidents</h2>';
-                html += '<div class="timeline">';
+            // Incidents Section - filter by domain and duration
+            // Get service IDs from the filtered services list
+            const serviceIds = services.map(s => s.id);
 
-                incidents.forEach(incident => {
-                    html += `
-                        <div class="timeline-item">
-                            <div class="timeline-marker ${incident.status}"></div>
-                            <div class="timeline-content">
-                                <div class="timeline-header">
-                                    <div class="timeline-title">${incident.service_name}</div>
-                                    <div class="timeline-badge ${incident.status}">${incident.status}</div>
+            const validIncidents = incidents.filter(incident => {
+                // Only show incidents for services that are visible on this domain
+                if (!serviceIds.includes(incident.service_id)) {
+                    return false;
+                }
+                // Filter out incidents less than 1 minute (60 seconds)
+                return incident.status === 'ongoing' || (incident.duration && incident.duration >= 60);
+            });
+
+            // Always show incidents section
+            html += '<div class="timeline-section">';
+            html += '<h2>Recent Incidents (Last 30 Days)</h2>';
+
+            if (validIncidents.length > 0) {
+                const groupedIncidents = groupIncidentsByDay(validIncidents);
+
+                Object.keys(groupedIncidents).forEach(day => {
+                    html += `<div class="day-group">`;
+                    html += `<div class="day-separator"><h3>${day}</h3></div>`;
+
+                    groupedIncidents[day].forEach(incident => {
+                        const durationSeconds = incident.duration || 0;
+                        const durationClass = durationSeconds < 300 ? 'short' : durationSeconds < 3600 ? 'medium' : 'long';
+
+                        html += `
+                            <div class="incident-card ${incident.status}">
+                                <div class="incident-header">
+                                    <div class="incident-service">${incident.service_name}</div>
+                                    <div class="incident-badge ${incident.status}">${incident.status}</div>
                                 </div>
-                                <div class="timeline-time">${formatDate(incident.started_at)}</div>
-                                ${incident.description ? `<div class="timeline-description">${incident.description}</div>` : ''}
+                                <div class="incident-meta">
+                                    <div class="incident-meta-item">
+                                        <span>🕐</span>
+                                        <span>${formatDateFull(incident.started_at)}</span>
+                                    </div>
+                                    ${incident.duration || incident.status === 'ongoing' ? `
+                                        <div class="incident-meta-item">
+                                            <span>⏱</span>
+                                            <span class="incident-duration ${durationClass}">${formatDuration(incident.duration)}</span>
+                                        </div>
+                                    ` : ''}
+                                </div>
                             </div>
-                        </div>
-                    `;
-                });
+                        `;
+                    });
 
-                html += '</div></div>';
+                    html += `</div>`; // Close day-group
+                });
+            } else {
+                html += `
+                    <div style="text-align: center; padding: 48px 24px; color: #666;">
+                        <div style="font-size: 2rem; margin-bottom: 12px;">✓</div>
+                        <div style="font-size: 0.9375rem; font-weight: 500;">No recent incidents</div>
+                        <div style="font-size: 0.8125rem; margin-top: 4px;">All services have been running smoothly</div>
+                    </div>
+                `;
             }
+
+            html += '</div>';
 
             document.getElementById('app').innerHTML = html;
         }

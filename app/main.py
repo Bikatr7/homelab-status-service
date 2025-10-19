@@ -56,6 +56,12 @@ origins = [
     "https://status.kadenbilyeu.com",
     "https://status.bikatr7.com",
     "https://bikatr7.com",
+    "https://kakusui.org",
+    "https://status.kakusui.org",
+    "https://easytl.org",
+    "https://status.easytl.org",
+    "https://tetragroup.io",
+    "https://status.tetragroup.io",
     "http://localhost:5173",
     "https://kadenbilyeu-com.pages.dev",
     "https://*.kadenbilyeu-com.pages.dev",
@@ -67,7 +73,7 @@ origins = [
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_origin_regex=r"^https://([a-z0-9-]\.)?(kadenbilyeu-com\.pages\.dev|bikatr7\.pages\.dev|kadenbilyeu\.com|bikatr7\.com)$",
+    allow_origin_regex=r"^https://([a-z0-9-]\.)?(kadenbilyeu-com\.pages\.dev|bikatr7\.pages\.dev|kadenbilyeu\.com|bikatr7\.com|kakusui\.org|easytl\.org|tetragroup\.io)$",
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
@@ -118,6 +124,9 @@ async def initialize_services():
                     if existing.expected_status != service_config["expected_status"]:
                         existing.expected_status = service_config["expected_status"]
                         updated = True
+                    if existing.domains != service_config.get("domains"):
+                        existing.domains = service_config.get("domains")
+                        updated = True
 
                     if updated:
                         logger.info(f"Updated service: {service_config['name']}")
@@ -128,6 +137,7 @@ async def initialize_services():
                         url=service_config["url"],
                         check_type=service_config["check_type"],
                         expected_status=service_config["expected_status"],
+                        domains=service_config.get("domains"),
                         enabled=True
                     )
                     db.add(service)

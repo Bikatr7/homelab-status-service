@@ -19,6 +19,7 @@ class ServiceStatus(BaseModel):
     uptime_30d: float
     last_check: Optional[datetime]
     current_incident: Optional[dict]
+    domains: Optional[str]
 
     class Config:
         from_attributes = True
@@ -85,15 +86,52 @@ async def calculate_uptime(db: AsyncSession, service_id: int, hours: int) -> flo
     )
     up_checks = result.scalar_one()
 
-    return (up_checks / total_checks) * 100 if total_checks > 0 else 100.0
+    result = await db.execute(
+        select(Incident)
+        .where(
+            and_(
+                Incident.service_id == service_id,
+                Incident.started_at >= start_time,
+                Incident.status == "resolved",
+                Incident.duration.isnot(None),
+                Incident.duration < 60
+            )
+        )
+    )
+    short_incidents = result.scalars().all()
+
+    short_outage_checks = 0
+    for incident in short_incidents:
+        if incident.ended_at:
+            result = await db.execute(
+                select(func.count(HealthCheck.id))
+                .where(
+                    and_(
+                        HealthCheck.service_id == service_id,
+                        HealthCheck.timestamp >= incident.started_at,
+                        HealthCheck.timestamp <= incident.ended_at,
+                        HealthCheck.status != "up"
+                    )
+                )
+            )
+            short_outage_checks += result.scalar_one()
+
+    adjusted_up_checks = up_checks + short_outage_checks
+
+    return (adjusted_up_checks / total_checks) * 100 if total_checks > 0 else 100.0
 
 @router.get("/services", response_model=List[ServiceStatus])
-async def get_services(db: AsyncSession = Depends(get_db)):
+async def get_services(domain: Optional[str] = None, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Service))
     services = result.scalars().all()
 
     service_statuses = []
     for service in services:
+        if domain and service.domains:
+            service_domains = [d.strip() for d in service.domains.split(',')]
+            if domain not in service_domains:
+                continue
+
         latest_check_result = await db.execute(
             select(HealthCheck)
             .where(HealthCheck.service_id == service.id)
@@ -132,7 +170,8 @@ async def get_services(db: AsyncSession = Depends(get_db)):
                 "id": current_incident.id,
                 "started_at": current_incident.started_at.isoformat(),
                 "description": current_incident.description
-            } if current_incident else None
+            } if current_incident else None,
+            domains=service.domains
         )
         service_statuses.append(service_status)
 
@@ -218,12 +257,17 @@ async def get_service_stats(
 async def get_incidents(
     limit: int = 50,
     ongoing_only: bool = False,
+    days: int = 30,
     db: AsyncSession = Depends(get_db)
 ):
+    start_time = datetime.utcnow() - timedelta(days=days)
+
     query = select(Incident, Service.name).join(Service)
 
     if ongoing_only:
         query = query.where(Incident.status == "ongoing")
+
+    query = query.where(Incident.started_at >= start_time)
 
     query = query.order_by(desc(Incident.started_at)).limit(limit)
 

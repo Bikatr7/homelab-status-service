@@ -64,6 +64,13 @@ class Settings(BaseSettings):
             "expected_status": "200",
             "domains": "kadenbilyeu.com,bikatr7.com,tetragroup.io"
         },
+        {
+            "name": "Momentum (momentum.kadenbilyeu.com)",
+            "url": "https://momentum.kadenbilyeu.com",
+            "check_type": "http",
+            "expected_status": "200",
+            "domains": "kadenbilyeu.com,bikatr7.com"
+        },
     ]
 
     class Config:

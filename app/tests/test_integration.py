@@ -144,7 +144,7 @@ async def test_disabled_service_not_monitored(test_db):
         assert len(checks) == 0
 
 @pytest.mark.asyncio
-async def test_degraded_service_status(test_db, test_service):
+async def test_down_service_status(test_db, test_service):
     mock_response = MagicMock()
     mock_response.status_code = 500
 
@@ -161,5 +161,5 @@ async def test_degraded_service_status(test_db, test_service):
             checks = result.scalars().all()
 
             assert len(checks) > 0
-            assert checks[-1].status == "degraded"
+            assert checks[-1].status == "down"
             assert checks[-1].status_code == 500

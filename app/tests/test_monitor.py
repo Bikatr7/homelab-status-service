@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import httpx
 
 from monitor import (
@@ -37,7 +37,7 @@ async def test_check_http_service_404():
 
         status, response_time, status_code, error = await check_http_service("https://example.com")
 
-        assert status == "degraded"
+        assert status == "down"
         assert response_time > 0
         assert status_code == 404
         assert "HTTP 404" in error
@@ -170,7 +170,7 @@ async def test_run_health_checks_integration(test_db, test_service):
 async def test_cleanup_old_checks(test_db, test_service):
     old_check = HealthCheck(
         service_id=test_service.id,
-        timestamp=datetime.utcnow() - timedelta(days=35),
+        timestamp=datetime.now(timezone.utc) - timedelta(days=35),
         status="up",
         response_time=100.0,
         status_code=200

@@ -1,5 +1,5 @@
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, patch
 from sqlalchemy import select
 
@@ -11,7 +11,7 @@ async def test_calculate_uptime_all_up(test_db, test_service):
     for i in range(10):
         check = HealthCheck(
             service_id=test_service.id,
-            timestamp=datetime.utcnow() - timedelta(hours=i),
+            timestamp=datetime.now(timezone.utc) - timedelta(hours=i),
             status="up",
             response_time=100.0,
             status_code=200
@@ -28,7 +28,7 @@ async def test_calculate_uptime_partial(test_db, test_service):
         status = "up" if i % 2 == 0 else "down"
         check = HealthCheck(
             service_id=test_service.id,
-            timestamp=datetime.utcnow() - timedelta(hours=i),
+            timestamp=datetime.now(timezone.utc) - timedelta(hours=i),
             status=status,
             response_time=100.0 if status == "up" else None,
             status_code=200 if status == "up" else None
@@ -42,7 +42,7 @@ async def test_calculate_uptime_partial(test_db, test_service):
 @pytest.mark.asyncio
 async def test_calculate_uptime_no_data(test_db, test_service):
     uptime = await calculate_uptime(test_db, test_service.id, 24)
-    assert uptime == 100.0
+    assert uptime == 0.0
 
 @pytest.mark.asyncio
 async def test_get_services_endpoint(test_db, test_service, test_health_check):
@@ -73,7 +73,7 @@ async def test_get_service_history(test_db, test_service):
     for i in range(5):
         check = HealthCheck(
             service_id=test_service.id,
-            timestamp=datetime.utcnow() - timedelta(hours=i),
+            timestamp=datetime.now(timezone.utc) - timedelta(hours=i),
             status="up",
             response_time=100.0,
             status_code=200
@@ -108,7 +108,7 @@ async def test_get_service_stats(test_db, test_service):
         status = "up" if i < 8 else "down"
         check = HealthCheck(
             service_id=test_service.id,
-            timestamp=datetime.utcnow() - timedelta(hours=i),
+            timestamp=datetime.now(timezone.utc) - timedelta(hours=i),
             status=status,
             response_time=100.0 if status == "up" else None,
             status_code=200 if status == "up" else None
@@ -169,15 +169,15 @@ async def test_get_incidents(test_db, test_service, test_incident):
 async def test_get_incidents_ongoing_only(test_db, test_service):
     incident1 = Incident(
         service_id=test_service.id,
-        started_at=datetime.utcnow() - timedelta(hours=2),
-        ended_at=datetime.utcnow() - timedelta(hours=1),
+        started_at=datetime.now(timezone.utc) - timedelta(hours=2),
+        ended_at=datetime.now(timezone.utc) - timedelta(hours=1),
         duration=3600,
         status="resolved",
         description="Resolved incident"
     )
     incident2 = Incident(
         service_id=test_service.id,
-        started_at=datetime.utcnow(),
+        started_at=datetime.now(timezone.utc),
         status="ongoing",
         description="Ongoing incident"
     )

@@ -1,5 +1,5 @@
 import pytest
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import select
 
 from database import Service, HealthCheck, Incident
@@ -44,7 +44,7 @@ async def test_service_relationships(test_db, test_service, test_health_check):
 async def test_create_health_check(test_db, test_service):
     check = HealthCheck(
         service_id=test_service.id,
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         status="up",
         response_time=200.0,
         status_code=200,
@@ -66,7 +66,7 @@ async def test_create_health_check(test_db, test_service):
 async def test_create_incident(test_db, test_service):
     incident = Incident(
         service_id=test_service.id,
-        started_at=datetime.utcnow(),
+        started_at=datetime.now(timezone.utc),
         status="ongoing",
         description="Service is down"
     )
@@ -84,7 +84,7 @@ async def test_create_incident(test_db, test_service):
 
 @pytest.mark.asyncio
 async def test_resolve_incident(test_db, test_incident):
-    test_incident.ended_at = datetime.utcnow()
+    test_incident.ended_at = datetime.now(timezone.utc)
     test_incident.duration = 300
     test_incident.status = "resolved"
     await test_db.commit()

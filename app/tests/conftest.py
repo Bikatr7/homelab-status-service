@@ -2,7 +2,7 @@ import pytest
 import asyncio
 from pathlib import Path
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-from datetime import datetime
+from datetime import datetime, timezone
 
 from database import Base, Service, HealthCheck, Incident
 
@@ -78,7 +78,7 @@ async def test_service_down(test_db):
 async def test_health_check(test_db, test_service):
     check = HealthCheck(
         service_id=test_service.id,
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         status="up",
         response_time=150.5,
         status_code=200,
@@ -93,7 +93,7 @@ async def test_health_check(test_db, test_service):
 async def test_incident(test_db, test_service):
     incident = Incident(
         service_id=test_service.id,
-        started_at=datetime.utcnow(),
+        started_at=datetime.now(timezone.utc),
         ended_at=None,
         duration=None,
         status="ongoing",

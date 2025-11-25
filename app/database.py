@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Boolean, Text, text
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import declarative_base, relationship
-from datetime import datetime
+from datetime import datetime, timezone
 from config import settings
 
 Base = declarative_base()
@@ -16,7 +16,7 @@ class Service(Base):
     expected_status = Column(String, nullable=False)
     domains = Column(Text, nullable=True)
     enabled = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     checks = relationship("HealthCheck", back_populates="service", cascade="all, delete-orphan")
     incidents = relationship("Incident", back_populates="service", cascade="all, delete-orphan")
@@ -26,7 +26,7 @@ class HealthCheck(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     service_id = Column(Integer, ForeignKey("services.id"), nullable=False, index=True)
-    timestamp = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    timestamp = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False, index=True)
     status = Column(String, nullable=False)
     response_time = Column(Float, nullable=True)
     status_code = Column(Integer, nullable=True)
@@ -39,8 +39,8 @@ class Incident(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     service_id = Column(Integer, ForeignKey("services.id"), nullable=False, index=True)
-    started_at = Column(DateTime, nullable=False, index=True)
-    ended_at = Column(DateTime, nullable=True)
+    started_at = Column(DateTime(timezone=True), nullable=False, index=True)
+    ended_at = Column(DateTime(timezone=True), nullable=True)
     duration = Column(Integer, nullable=True)
     status = Column(String, nullable=False)
     description = Column(Text, nullable=True)

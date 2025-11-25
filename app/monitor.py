@@ -1,6 +1,6 @@
 import httpx
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 from config import settings
@@ -16,12 +16,10 @@ async def check_http_service(url: str, timeout: int = 10) -> tuple[str, float, i
             response = await client.get(url, timeout=timeout)
             response_time = (time.time() - start_time) * 1000
 
-            if 200 <= response.status_code < 300:
+            if response.status_code < 400:
                 return "up", response_time, response.status_code, None
-            elif 300 <= response.status_code < 400:
-                return "up", response_time, response.status_code, None
-            else:
-                return "degraded", response_time, response.status_code, f"HTTP {response.status_code}"
+
+            return "down", response_time, response.status_code, f"HTTP {response.status_code}"
     except httpx.TimeoutException:
         return "down", None, None, "Connection timeout"
     except httpx.ConnectError as e:
@@ -43,7 +41,7 @@ async def perform_health_check(service: Service) -> HealthCheck:
 
     check = HealthCheck(
         service_id=service.id,
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         status=status,
         response_time=response_time,
         status_code=status_code,
@@ -53,6 +51,11 @@ async def perform_health_check(service: Service) -> HealthCheck:
     return check
 
 async def handle_incident(db: AsyncSession, service: Service, current_status: str):
+    def ensure_utc(dt: datetime) -> datetime:
+        if dt.tzinfo is None:
+            return dt.replace(tzinfo=timezone.utc)
+        return dt
+
     result = await db.execute(
         select(Incident)
         .where(Incident.service_id == service.id)
@@ -65,7 +68,7 @@ async def handle_incident(db: AsyncSession, service: Service, current_status: st
         if not latest_incident or latest_incident.status == "resolved":
             new_incident = Incident(
                 service_id=service.id,
-                started_at=datetime.utcnow(),
+                started_at=datetime.now(timezone.utc),
                 status="ongoing",
                 description=f"{service.name} is down"
             )
@@ -73,15 +76,14 @@ async def handle_incident(db: AsyncSession, service: Service, current_status: st
             logger.warning(f"New incident created for {service.name}")
     else:
         if latest_incident and latest_incident.status == "ongoing":
-            latest_incident.ended_at = datetime.utcnow()
-            duration = int((latest_incident.ended_at - latest_incident.started_at).total_seconds())
+            latest_incident.ended_at = datetime.now(timezone.utc)
+            duration = int(
+                (ensure_utc(latest_incident.ended_at) - ensure_utc(latest_incident.started_at)).total_seconds()
+            )
             latest_incident.duration = duration
             latest_incident.status = "resolved"
 
-            if duration >= 60:
-                logger.info(f"Incident resolved for {service.name} (duration: {duration}s)")
-            else:
-                logger.info(f"Short incident resolved for {service.name} (duration: {duration}s, won't count against uptime)")
+            logger.info(f"Incident resolved for {service.name} (duration: {duration}s)")
 
 async def run_health_checks():
     async with AsyncSessionLocal() as db:
@@ -106,17 +108,12 @@ async def run_health_checks():
 async def cleanup_old_checks(days: int = 30):
     async with AsyncSessionLocal() as db:
         try:
-            cutoff_date = datetime.utcnow() - timedelta(days=days)
-            result = await db.execute(
-                select(HealthCheck).where(HealthCheck.timestamp < cutoff_date)
+            cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
+            deleted = await db.execute(
+                HealthCheck.__table__.delete().where(HealthCheck.timestamp < cutoff_date)
             )
-            old_checks = result.scalars().all()
-
-            for check in old_checks:
-                await db.delete(check)
-
             await db.commit()
-            logger.info(f"Cleaned up {len(old_checks)} old health checks")
+            logger.info(f"Cleaned up {deleted.rowcount or 0} old health checks")
         except Exception as e:
             logger.error(f"Error during cleanup: {str(e)}")
             await db.rollback()

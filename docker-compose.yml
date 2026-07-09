@@ -10,8 +10,6 @@ services:
       - DATABASE_URL=sqlite+aiosqlite:////app/data/status.db
       - CHECK_INTERVAL=60
       - TIMEOUT=10
-    ports:
-      - "8000:8000"
     volumes:
       - ./data:/app/data
       - ./frontend:/app/frontend:ro

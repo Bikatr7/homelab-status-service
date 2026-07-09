@@ -49,7 +49,13 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down scheduler...")
     scheduler.shutdown()
 
-app = FastAPI(title="Homelab Status Service", lifespan=lifespan)
+app = FastAPI(
+    title="Homelab Status Service",
+    lifespan=lifespan,
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
+)
 
 origins = [
     "https://kadenbilyeu.com",

@@ -206,3 +206,39 @@ async def test_get_incidents_ongoing_only(test_db, test_service):
         data = response.json()
         assert len(data) == 1
         assert data[0]["status"] == "ongoing"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/api/services/1/history?hours=0",
+        "/api/services/1/history?hours=721",
+        "/api/services/1/stats?hours=0",
+        "/api/services/1/stats?hours=721",
+        "/api/incidents?limit=0",
+        "/api/incidents?limit=101",
+        "/api/incidents?days=0",
+        "/api/incidents?days=366",
+    ],
+)
+async def test_public_query_limits_reject_unbounded_ranges(path, test_db):
+    from fastapi import FastAPI
+    from httpx import ASGITransport, AsyncClient
+
+    from config import settings
+    from database import get_db as original_get_db
+    from routes import router as api_router
+
+    test_app = FastAPI()
+    test_app.include_router(api_router, prefix=settings.API_PREFIX)
+
+    async def override_get_db():
+        yield test_db
+
+    test_app.dependency_overrides[original_get_db] = override_get_db
+
+    async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
+        response = await client.get(path)
+
+    assert response.status_code == 422

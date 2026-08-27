@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select, func, and_, desc, case
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timedelta, timezone
@@ -211,7 +211,7 @@ async def get_services(domain: Optional[str] = None, db: AsyncSession = Depends(
 @router.get("/services/{service_id}/history", response_model=List[HealthCheckResponse])
 async def get_service_history(
     service_id: int,
-    hours: int = 24,
+    hours: int = Query(default=24, ge=1, le=720),
     db: AsyncSession = Depends(get_db)
 ):
     start_time = datetime.now(timezone.utc) - timedelta(hours=hours)
@@ -225,6 +225,7 @@ async def get_service_history(
             )
         )
         .order_by(desc(HealthCheck.timestamp))
+        .limit(2000)
     )
     checks = result.scalars().all()
 
@@ -233,7 +234,7 @@ async def get_service_history(
 @router.get("/services/{service_id}/stats", response_model=UptimeStats)
 async def get_service_stats(
     service_id: int,
-    hours: int = 24,
+    hours: int = Query(default=24, ge=1, le=720),
     db: AsyncSession = Depends(get_db)
 ):
     start_time = datetime.now(timezone.utc) - timedelta(hours=hours)
@@ -286,9 +287,9 @@ async def get_service_stats(
 
 @router.get("/incidents", response_model=List[IncidentResponse])
 async def get_incidents(
-    limit: int = 50,
+    limit: int = Query(default=50, ge=1, le=100),
     ongoing_only: bool = False,
-    days: int = 30,
+    days: int = Query(default=30, ge=1, le=365),
     db: AsyncSession = Depends(get_db)
 ):
     start_time = datetime.now(timezone.utc) - timedelta(days=days)

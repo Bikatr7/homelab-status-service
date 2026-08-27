@@ -5,6 +5,25 @@ services:
       dockerfile: Dockerfile
     image: homelab-status-service:latest
     restart: unless-stopped
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m,mode=1777
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: "local"
+      options:
+        max-size: "20m"
+        max-file: "5"
     environment:
       - TZ=America/Denver
       - DATABASE_URL=sqlite+aiosqlite:////app/data/status.db

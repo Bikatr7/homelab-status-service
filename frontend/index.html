@@ -1,730 +1,143 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Status - Homelab Services</title>
-    <meta name="description" content="Real-time status and uptime monitoring for homelab services">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
-            background: #0a0a0a;
-            color: #ffffff;
-            min-height: 100vh;
-            line-height: 1.5;
-        }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 0 24px;
-        }
-
-        /* Header */
-        .header {
-            text-align: center;
-            padding: 48px 0 32px;
-            border-bottom: 1px solid #1f1f1f;
-        }
-
-        .header h1 {
-            font-size: 2.25rem;
-            font-weight: 600;
-            margin-bottom: 8px;
-            letter-spacing: -0.025em;
-        }
-
-        .header p {
-            color: #888;
-            font-size: 1rem;
-        }
-
-        /* Main Status Indicator */
-        .status-hero {
-            background: #111;
-            border: 1px solid #333;
-            border-radius: 12px;
-            padding: 32px;
-            margin: 32px 0;
-            display: flex;
-            align-items: center;
-            gap: 24px;
-        }
-
-        .status-indicator {
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            flex-shrink: 0;
-        }
-
-        .status-indicator.operational {
-            background: #22c55e;
-            box-shadow: 0 0 20px rgba(34, 197, 94, 0.3);
-        }
-
-        .status-indicator.partial {
-            background: #f59e0b;
-            box-shadow: 0 0 20px rgba(245, 158, 11, 0.3);
-        }
-
-        .status-indicator.major {
-            background: #ef4444;
-            box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
-        }
-
-        .status-content h2 {
-            font-size: 1.5rem;
-            font-weight: 600;
-            margin-bottom: 4px;
-        }
-
-        .status-content p {
-            color: #888;
-            font-size: 0.875rem;
-        }
-
-        /* Components Grid */
-        .components-section {
-            margin: 48px 0;
-        }
-
-        .components-section h2 {
-            font-size: 1.25rem;
-            font-weight: 600;
-            margin-bottom: 24px;
-            color: #fff;
-        }
-
-        .components-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 16px;
-        }
-
-        .component {
-            background: #111;
-            border: 1px solid #333;
-            border-radius: 8px;
-            padding: 20px;
-            transition: all 0.2s ease;
-        }
-
-        .component:hover {
-            border-color: #555;
-            transform: translateY(-1px);
-        }
-
-        .component.up { border-left: 3px solid #22c55e; }
-        .component.degraded { border-left: 3px solid #f59e0b; }
-        .component.down { border-left: 3px solid #ef4444; }
-
-        .component-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
-        }
-
-        .component-name {
-            font-size: 1rem;
-            font-weight: 500;
-            color: #fff;
-        }
-
-        .component-status {
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        .component-status.operational {
-            background: #22c55e;
-            color: #fff;
-        }
-
-        .component-status.degraded {
-            background: #f59e0b;
-            color: #fff;
-        }
-
-        .component-status.major_outage {
-            background: #ef4444;
-            color: #fff;
-        }
-
-        .component-metrics {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 12px;
-            margin-top: 16px;
-        }
-
-        .timeline-bar {
-            margin-top: 12px;
-            height: 4px;
-            background: #333;
-            border-radius: 2px;
-            overflow: hidden;
-            position: relative;
-        }
-
-        .timeline-fill {
-            height: 100%;
-            background: #22c55e;
-            transition: width 0.3s ease;
-            border-radius: 2px;
-        }
-
-        .timeline-fill.warning {
-            background: #f59e0b;
-        }
-
-        .timeline-fill.danger {
-            background: #ef4444;
-        }
-
-        .metric {
-            text-align: center;
-        }
-
-        .metric-label {
-            font-size: 0.75rem;
-            color: #888;
-            margin-bottom: 4px;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        .metric-value {
-            font-size: 1.25rem;
-            font-weight: 600;
-            color: #fff;
-        }
-
-        .metric-value.good { color: #22c55e; }
-        .metric-value.warning { color: #f59e0b; }
-        .metric-value.bad { color: #ef4444; }
-
-        /* Incidents Section */
-        .timeline-section {
-            margin: 48px 0;
-        }
-
-        .timeline-section h2 {
-            font-size: 1.25rem;
-            font-weight: 600;
-            margin-bottom: 32px;
-            color: #fff;
-        }
-
-        .day-group {
-            margin-bottom: 48px;
-        }
-
-        .day-group:last-child {
-            margin-bottom: 0;
-        }
-
-        .day-separator {
-            margin-bottom: 16px;
-            padding-bottom: 8px;
-            border-bottom: 1px solid #2a2a2a;
-        }
-
-        .day-separator h3 {
-            font-size: 0.75rem;
-            font-weight: 600;
-            color: #666;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            margin: 0;
-        }
-
-        .incident-card {
-            background: #111;
-            border: 1px solid #2a2a2a;
-            border-radius: 8px;
-            padding: 16px 20px;
-            margin-bottom: 12px;
-            transition: all 0.2s ease;
-        }
-
-        .incident-card:last-child {
-            margin-bottom: 0;
-        }
-
-        .incident-card:hover {
-            border-color: #3a3a3a;
-            transform: translateX(2px);
-        }
-
-        .incident-card.resolved {
-            border-left: 3px solid #22c55e;
-        }
-
-        .incident-card.ongoing {
-            border-left: 3px solid #ef4444;
-        }
-
-        .incident-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px;
-        }
-
-        .incident-service {
-            font-size: 0.9375rem;
-            font-weight: 600;
-            color: #fff;
-        }
-
-        .incident-badge {
-            padding: 4px 10px;
-            border-radius: 4px;
-            font-size: 0.6875rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        .incident-badge.ongoing {
-            background: rgba(239, 68, 68, 0.15);
-            color: #ef4444;
-            border: 1px solid rgba(239, 68, 68, 0.3);
-        }
-
-        .incident-badge.resolved {
-            background: rgba(34, 197, 94, 0.15);
-            color: #22c55e;
-            border: 1px solid rgba(34, 197, 94, 0.3);
-        }
-
-        .incident-meta {
-            display: flex;
-            gap: 16px;
-            font-size: 0.8125rem;
-            color: #888;
-        }
-
-        .incident-meta-item {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        .incident-duration {
-            font-weight: 500;
-        }
-
-        .incident-duration.short {
-            color: #22c55e;
-        }
-
-        .incident-duration.medium {
-            color: #f59e0b;
-        }
-
-        .incident-duration.long {
-            color: #ef4444;
-        }
-
-        /* Loading & Error */
-        .loading {
-            text-align: center;
-            padding: 120px 40px;
-            color: #888;
-            font-size: 1rem;
-        }
-
-        .loading-spinner {
-            display: inline-block;
-            width: 48px;
-            height: 48px;
-            margin-bottom: 24px;
-        }
-
-        .loading-spinner::after {
-            content: "";
-            display: block;
-            width: 40px;
-            height: 40px;
-            margin: 4px;
-            border-radius: 50%;
-            border: 4px solid #333;
-            border-color: #666 transparent #666 transparent;
-            animation: loading-spinner 1.2s linear infinite;
-        }
-
-        @keyframes loading-spinner {
-            0% {
-                transform: rotate(0deg);
-            }
-            100% {
-                transform: rotate(360deg);
-            }
-        }
-
-        .loading-text {
-            color: #666;
-            font-size: 0.9375rem;
-            font-weight: 500;
-        }
-
-        .loading-dots::after {
-            content: '';
-            animation: loading-dots 1.5s infinite;
-        }
-
-        @keyframes loading-dots {
-            0%, 20% {
-                content: '';
-            }
-            40% {
-                content: '.';
-            }
-            60% {
-                content: '..';
-            }
-            80%, 100% {
-                content: '...';
-            }
-        }
-
-        .error {
-            background: #111;
-            color: #ef4444;
-            padding: 24px;
-            border-radius: 8px;
-            text-align: center;
-            margin: 32px auto;
-            max-width: 500px;
-            border: 1px solid #333;
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            .container {
-                padding: 0 16px;
-            }
-
-            .header h1 {
-                font-size: 1.75rem;
-            }
-
-            .status-hero {
-                padding: 24px;
-                gap: 16px;
-            }
-
-            .status-indicator {
-                width: 40px;
-                height: 40px;
-                font-size: 20px;
-            }
-
-            .components-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-
-        <div id="app">
-            <div class="loading">
-                <div class="loading-spinner"></div>
-                <div class="loading-text">Loading status<span class="loading-dots"></span></div>
-            </div>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#11171b" />
+    <meta name="color-scheme" content="dark" />
+    <meta
+      name="description"
+      content="Live service health, outage timelines, and monitoring history."
+    />
+    <title>Service status</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='8' fill='%23172925'/%3E%3Cpath d='M8 22h6l4-10 5 17 4-7h5' fill='none' stroke='%23eff4df' stroke-width='3'/%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="/assets/status-history.css?v=20260926-1" />
+    <script src="/assets/status-history.js?v=20260926-1" defer></script>
+  </head>
+  <body>
+    <div class="page">
+      <header class="masthead">
+        <a class="brand" href="/" aria-label="Status homepage"
+          ><svg aria-hidden="true" viewBox="0 0 32 32">
+            <path d="M2 17h7l4-10 6 19 4-9h7" /></svg
+          ><span
+            >Status<span class="brand-domain" id="domain-label"></span></span
+        ></a>
+        <div class="timezone-control">
+          <label for="timezone">Time zone</label
+          ><select id="timezone"></select>
         </div>
+      </header>
 
+      <main>
+        <section class="overview" aria-labelledby="health-title">
+          <div class="eyebrow">
+            <span class="state-dot unknown" id="health-dot"></span> Current
+            health
+          </div>
+          <h1 id="health-title">Checking service health…</h1>
+          <p class="health-description" id="health-description">
+            Waiting for the latest observations.
+          </p>
+          <div class="check-line">
+            <span id="last-updated">No data loaded yet</span
+            ><button id="refresh" class="text-button" type="button">
+              Refresh <span aria-hidden="true">↻</span>
+            </button>
+          </div>
+        </section>
+
+        <div id="connection-notice" class="notice" role="status" hidden></div>
+
+        <section class="history" aria-labelledby="history-title">
+          <div class="section-heading">
+            <div>
+              <h2 id="history-title">Availability</h2>
+              <p id="window-label">Reachability over time.</p>
+            </div>
+            <div class="periods" role="group" aria-label="History period">
+              <button type="button" data-hours="24" aria-pressed="false">
+                24 hours</button
+              ><button type="button" data-hours="168" aria-pressed="false">
+                7 days</button
+              ><button type="button" data-hours="720" aria-pressed="true">
+                30 days
+              </button>
+            </div>
+          </div>
+          <div id="notable-event" hidden></div>
+          <div class="table-key">
+            <div class="legend">
+              <span><i class="key up"></i> Reachable</span
+              ><span><i class="key down"></i> Unreachable</span
+              ><span><i class="key unknown"></i> No observations</span>
+            </div>
+            <div class="metric-headings">
+              <span>Uptime</span><span>Downtime</span>
+            </div>
+          </div>
+          <div id="services" aria-busy="true">
+            <div class="empty">Loading service history…</div>
+          </div>
+          <div id="timeline-detail" role="status" hidden></div>
+          <p class="method-note">Outages of a minute or less are excluded.</p>
+        </section>
+
+        <section class="outages" aria-labelledby="outages-title">
+          <div class="section-heading">
+            <div>
+              <h2 id="outages-title">
+                Outages <span id="event-count" class="count"></span>
+              </h2>
+              <p id="archive-label"></p>
+            </div>
+            <div class="history-controls">
+              <label class="sort-label"
+                >History<select id="history-scope">
+                  <option value="all">All history</option>
+                  <option value="window">Selected period</option>
+                </select></label
+              ><label class="sort-label"
+                >Sort
+                <select id="event-sort">
+                  <option value="recent">Most recent</option>
+                  <option value="longest">Longest first</option>
+                </select></label
+              >
+            </div>
+          </div>
+          <div id="events">
+            <div class="empty">Loading history…</div>
+          </div>
+          <button class="more-button" id="show-more" type="button" hidden>
+            Show more events
+          </button>
+        </section>
+        <details class="monitor-note">
+          <summary>About this data</summary>
+          <p>
+            Detailed checks cover the last 30 days. The outage archive includes
+            every retained incident lasting more than a minute.
+          </p>
+          <p>
+            Missing observations are excluded from uptime. Grouped outages
+            overlap in time; that does not establish a shared cause.
+          </p>
+        </details>
+      </main>
+      <footer>
+        <span id="timezone-note"></span>
+      </footer>
     </div>
-
-    <script>
-        const API_URL = '/api';
-        let services = [];
-        let incidents = [];
-
-        // Detect the current domain and extract the base domain
-        function getCurrentDomain() {
-            const hostname = window.location.hostname;
-            // Extract the main domain (e.g., kadenbilyeu.com, kakusui.org, etc.)
-            // Remove 'status.' prefix if present
-            const domain = hostname.replace(/^status\./, '');
-            return domain;
-        }
-
-        async function fetchStatus() {
-            try {
-                const currentDomain = getCurrentDomain();
-
-                // Fetch services with domain filter
-                const [servicesRes, incidentsRes] = await Promise.all([
-                    fetch(`${API_URL}/services?domain=${encodeURIComponent(currentDomain)}`),
-                    fetch(`${API_URL}/incidents?limit=50&days=30`)
-                ]);
-
-                if (!servicesRes.ok || !incidentsRes.ok) {
-                    throw new Error('Failed to fetch status data');
-                }
-
-                services = await servicesRes.json();
-                incidents = await incidentsRes.json();
-                render();
-            } catch (error) {
-                renderError(error.message);
-            }
-        }
-
-        function getStatusClass(status) {
-            if (status === 'up') return 'operational';
-            if (status === 'degraded') return 'degraded';
-            return 'major_outage';
-        }
-
-        function getUptimeClass(uptime) {
-            if (uptime >= 99.9) return 'good';
-            if (uptime >= 95) return 'warning';
-            return 'bad';
-        }
-
-        function getTimelineClass(uptime) {
-            if (uptime >= 99.9) return 'good';
-            if (uptime >= 95) return 'warning';
-            return 'danger';
-        }
-
-        function floorUptime(uptime) {
-            // Always round down to 1 decimal place
-            return (Math.floor(uptime * 10) / 10).toFixed(1);
-        }
-
-        function formatDuration(seconds) {
-            if (!seconds) return 'Ongoing';
-            const days = Math.floor(seconds / 86400);
-            const hours = Math.floor((seconds % 86400) / 3600);
-            const minutes = Math.floor((seconds % 3600) / 60);
-
-            if (days > 0) return `${days}d ${hours}h ${minutes}m`;
-            if (hours > 0) return `${hours}h ${minutes}m`;
-            return `${minutes}m`;
-        }
-
-        function formatDate(dateString) {
-            const date = new Date(dateString);
-            const now = new Date();
-            const diffMs = now - date;
-            const diffMins = Math.floor(diffMs / 60000);
-
-            if (diffMins < 1) return 'Just now';
-            if (diffMins < 60) return `${diffMins}m ago`;
-
-            const diffHours = Math.floor(diffMins / 60);
-            if (diffHours < 24) return `${diffHours}h ago`;
-
-            const diffDays = Math.floor(diffHours / 24);
-            return `${diffDays}d ago`;
-        }
-
-        function formatDateFull(dateString) {
-            const date = new Date(dateString);
-            return date.toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-        }
-
-        function groupIncidentsByDay(incidents) {
-            const groups = {};
-
-            incidents.forEach(incident => {
-                const date = new Date(incident.started_at);
-                const dayKey = date.toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                });
-
-                if (!groups[dayKey]) {
-                    groups[dayKey] = [];
-                }
-                groups[dayKey].push(incident);
-            });
-
-            return groups;
-        }
-
-        function render() {
-            const allOperational = services.every(s => s.status === 'up');
-            const hasIncidents = services.some(s => s.current_incident);
-            const systemStatus = allOperational && !hasIncidents ? 'operational' : hasIncidents ? 'major' : 'partial';
-
-            let html = '';
-
-            // Main Status Indicator
-            const statusIcon = allOperational && !hasIncidents ? '✓' : hasIncidents ? '⚠' : '●';
-            const statusText = allOperational && !hasIncidents
-                ? 'All Systems Operational'
-                : hasIncidents ? 'Major Outage' : 'Partial Outage';
-
-            html += `
-                <div class="status-hero">
-                    <div class="status-indicator ${systemStatus}">${statusIcon}</div>
-                    <div class="status-content">
-                        <h2>${statusText}</h2>
-                        <p>Last updated: ${new Date().toLocaleString()}</p>
-                    </div>
-                </div>
-            `;
-
-            // Components Grid
-            html += '<div class="components-section">';
-            html += '<div class="components-grid">';
-
-            services.forEach(service => {
-                const statusClass = getStatusClass(service.status);
-                const uptimeClass = getUptimeClass(service.uptime_24h);
-                const timelineClass = getTimelineClass(service.uptime_24h);
-
-                html += `
-                    <div class="component ${service.status}">
-                        <div class="component-header">
-                            <div class="component-name">${service.name}</div>
-                            <div class="component-status ${statusClass}">${service.status}</div>
-                        </div>
-                        ${service.current_incident ? `
-                            <div style="color: #ef4444; font-size: 0.875rem; margin-bottom: 8px;">
-                                ⚠ ${service.current_incident.description}
-                            </div>
-                        ` : ''}
-                        <div class="timeline-bar">
-                            <div class="timeline-fill ${timelineClass}" style="width: ${service.uptime_24h}%"></div>
-                        </div>
-                        <div class="component-metrics">
-                            <div class="metric">
-                                <div class="metric-label">24h Uptime</div>
-                                <div class="metric-value ${uptimeClass}">
-                                    ${floorUptime(service.uptime_24h)}%
-                                </div>
-                            </div>
-                            <div class="metric">
-                                <div class="metric-label">7d Uptime</div>
-                                <div class="metric-value ${getUptimeClass(service.uptime_7d)}">
-                                    ${floorUptime(service.uptime_7d)}%
-                                </div>
-                            </div>
-                            <div class="metric">
-                                <div class="metric-label">30d Uptime</div>
-                                <div class="metric-value ${getUptimeClass(service.uptime_30d)}">
-                                    ${floorUptime(service.uptime_30d)}%
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            });
-
-            html += '</div></div>';
-
-            // Incidents Section - filter by domain and duration
-            // Get service IDs from the filtered services list
-            const serviceIds = services.map(s => s.id);
-
-            const validIncidents = incidents.filter(incident => {
-                // Only show incidents for services that are visible on this domain
-                if (!serviceIds.includes(incident.service_id)) {
-                    return false;
-                }
-                // Filter out incidents less than 1 minute (60 seconds)
-                return incident.status === 'ongoing' || (incident.duration && incident.duration >= 60);
-            });
-
-            // Always show incidents section
-            html += '<div class="timeline-section">';
-            html += '<h2>Recent Incidents (Last 30 Days)</h2>';
-
-            if (validIncidents.length > 0) {
-                const groupedIncidents = groupIncidentsByDay(validIncidents);
-
-                Object.keys(groupedIncidents).forEach(day => {
-                    html += `<div class="day-group">`;
-                    html += `<div class="day-separator"><h3>${day}</h3></div>`;
-
-                    groupedIncidents[day].forEach(incident => {
-                        const durationSeconds = incident.duration || 0;
-                        const durationClass = durationSeconds < 300 ? 'short' : durationSeconds < 3600 ? 'medium' : 'long';
-
-                        html += `
-                            <div class="incident-card ${incident.status}">
-                                <div class="incident-header">
-                                    <div class="incident-service">${incident.service_name}</div>
-                                    <div class="incident-badge ${incident.status}">${incident.status}</div>
-                                </div>
-                                <div class="incident-meta">
-                                    <div class="incident-meta-item">
-                                        <span>🕐</span>
-                                        <span>${formatDateFull(incident.started_at)}</span>
-                                    </div>
-                                    ${incident.duration || incident.status === 'ongoing' ? `
-                                        <div class="incident-meta-item">
-                                            <span>⏱</span>
-                                            <span class="incident-duration ${durationClass}">${formatDuration(incident.duration)}</span>
-                                        </div>
-                                    ` : ''}
-                                </div>
-                            </div>
-                        `;
-                    });
-
-                    html += `</div>`; // Close day-group
-                });
-            } else {
-                html += `
-                    <div style="text-align: center; padding: 48px 24px; color: #666;">
-                        <div style="font-size: 2rem; margin-bottom: 12px;">✓</div>
-                        <div style="font-size: 0.9375rem; font-weight: 500;">No recent incidents</div>
-                        <div style="font-size: 0.8125rem; margin-top: 4px;">All services have been running smoothly</div>
-                    </div>
-                `;
-            }
-
-            html += '</div>';
-
-            document.getElementById('app').innerHTML = html;
-        }
-
-        function renderError(message) {
-            document.getElementById('app').innerHTML = `
-                <div class="error">
-                    <h2>Error Loading Status</h2>
-                    <p>${message}</p>
-                </div>
-            `;
-        }
-
-        // Initial fetch
-        fetchStatus();
-
-        // Auto-refresh every 60 seconds
-        setInterval(fetchStatus, 60000);
-    </script>
-</body>
+    <div id="status-tooltip" class="status-tooltip" role="tooltip" hidden></div>
+    <noscript
+      ><p class="noscript">
+        JavaScript is required to load current status. This page does not
+        indicate that services are healthy until checks have loaded.
+      </p></noscript
+    >
+  </body>
 </html>

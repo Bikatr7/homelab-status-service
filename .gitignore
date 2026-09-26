@@ -50,3 +50,7 @@ Thumbs.db
 *.log
 logs/
 .venv/
+.pytest_cache/
+.coverage
+htmlcov/
+backups/

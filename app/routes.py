@@ -6,8 +6,11 @@ from typing import List, Optional
 from pydantic import BaseModel
 
 from database import get_db, Service, HealthCheck, Incident
+from overview import router as overview_router
 
 router = APIRouter()
+
+router.include_router(overview_router)
 
 class ServiceStatus(BaseModel):
     id: int

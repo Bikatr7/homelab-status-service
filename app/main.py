@@ -95,6 +95,8 @@ async def health():
 # Serve static frontend
 static_dir = Path(__file__).parent / "frontend"
 if static_dir.exists():
+    app.mount("/assets", StaticFiles(directory=static_dir / "assets"), name="assets")
+
     @app.get("/")
     async def serve_frontend():
         return FileResponse(static_dir / "index.html")

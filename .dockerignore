@@ -1,0 +1,11 @@
+.git
+backups
+data
+frontend
+**/__pycache__
+**/.pytest_cache
+**/htmlcov
+**/*.db
+**/*.sqlite*
+.env*
+**/.env*

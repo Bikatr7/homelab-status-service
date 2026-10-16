@@ -202,7 +202,7 @@ function fixture() {
     await tooltip.waitFor();
     assert.match(
       await tooltip.textContent(),
-      /Only outages longer than 60 seconds count/,
+      /Failed checks lasting 60 seconds or less are excluded/,
     );
     await page.keyboard.press("Escape");
     await page.locator(".segment.down").first().hover();
@@ -307,8 +307,22 @@ function fixture() {
     for (const service of data.services)
       service.last_check = new Date(Date.now() - 300000).toISOString();
     await refresh();
-    assert.match(await page.locator("h1").textContent(), /not fully known/);
+    assert.equal(await page.locator("h1").textContent(), "All services offline");
     assert.equal(await page.locator(".service-state.is-up").count(), 0);
+    assert.equal(await page.locator(".service-state.is-down").count(), 3);
+    await page.locator("#event-sort").selectOption("recent");
+    data = fixture();
+    for (const item of data.events[0].items) item.unobserved_seconds = 36000;
+    for (const service of data.services) service.unobserved_seconds = 36000;
+    await refresh();
+    assert.match(await page.locator(".event-title").first().textContent(), /System outage/);
+    assert.match(await page.locator(".event-status").first().textContent(), /Recovered/);
+    await page.locator(".event").first().locator("summary").click();
+    assert.match(await page.locator(".event-note").first().textContent(), /included in downtime/);
+    await page.locator('[data-metric="uptime"]').first().focus();
+    assert.match(await tooltip.textContent(), /Missing observations count as downtime/);
+    assert.doesNotMatch(await page.locator("body").textContent(), /Missing observations are excluded/);
+    await page.keyboard.press("Escape");
     data = fixture();
     await refresh();
     failure = true;

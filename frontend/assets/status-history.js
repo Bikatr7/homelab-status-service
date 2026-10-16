@@ -77,13 +77,12 @@
     return `${hours ? `${hours}h ` : ""}${minutes || hours ? `${minutes}m ` : ""}${seconds % 60}s`;
   }
   const name = (service) => service.name.replace(/\s*\([^)]*\)\s*$/, "");
-  const state = (service) =>
-    error ||
-    Date.now() - Date.parse(service.last_check) >=
+  const stale = (service) =>
+    !service.last_check || Date.now() - Date.parse(service.last_check) >=
       data.stale_after_seconds * 1000 ||
-    !service.last_check
-      ? "unknown"
-      : service.status;
+    Date.parse(service.last_check) > Date.now();
+  const state = (service) =>
+    error ? "unknown" : stale(service) ? "down" : service.status;
   const label = (status) =>
     ({
       up: "Online",
@@ -149,19 +148,19 @@
         0,
         (end - start) / 1000 - bucket.down_seconds - bucket.unknown_seconds,
       );
-      body = `<dl class="tooltip-times"><div><dt>From</dt><dd>${escape(date(start))}</dd></div><div><dt>To</dt><dd>${escape(date(end))}</dd></div></dl><div class="tooltip-metrics"><span><strong>${preciseDuration(reachable)}</strong>reachable</span><span><strong class="${bucket.down_seconds ? "bad" : ""}">${preciseDuration(bucket.down_seconds)}</strong>unreachable</span><span><strong>${preciseDuration(bucket.unknown_seconds)}</strong>unobserved</span></div>`;
+      body = `<dl class="tooltip-times"><div><dt>From</dt><dd>${escape(date(start))}</dd></div><div><dt>To</dt><dd>${escape(date(end))}</dd></div></dl><div class="tooltip-metrics"><span><strong>${preciseDuration(reachable)}</strong>reachable</span><span><strong class="${bucket.down_seconds ? "bad" : ""}">${preciseDuration(bucket.down_seconds)}</strong>downtime</span></div>`;
       $("timeline-detail").textContent = bucketText(service, index);
     } else if (anchor.classList.contains("metric")) {
       status = service.down_seconds ? "down" : "up";
       heading = anchor.dataset.metric === "uptime" ? "Uptime" : "Downtime";
-      body = `<dl class="tooltip-times"><div><dt>From</dt><dd>${escape(date(data.window_start))}</dd></div><div><dt>To</dt><dd>${escape(date(data.window_end))}</dd></div></dl><div class="tooltip-metrics"><span><strong>${service.uptime === null ? "—" : service.uptime.toFixed(2) + "%"}</strong>uptime</span><span><strong>${preciseDuration(service.down_seconds)}</strong>downtime</span><span><strong>${preciseDuration(service.unknown_seconds)}</strong>unobserved</span></div><p class="tooltip-help">Only outages longer than 60 seconds count. Missing observations are excluded from uptime.</p>`;
+      body = `<dl class="tooltip-times"><div><dt>From</dt><dd>${escape(date(data.window_start))}</dd></div><div><dt>To</dt><dd>${escape(date(data.window_end))}</dd></div></dl><div class="tooltip-metrics"><span><strong>${service.uptime === null ? "—" : service.uptime.toFixed(2) + "%"}</strong>uptime</span><span><strong>${preciseDuration(service.down_seconds)}</strong>downtime</span><span><strong>${preciseDuration(service.unobserved_seconds)}</strong>from missing checks</span></div><p class="tooltip-help">Failed checks lasting 60 seconds or less are excluded. Missing observations count as downtime once checks become stale.</p>`;
     } else {
       status = state(service);
       heading = label(status);
-      body = `<dl class="tooltip-times"><div><dt>Check</dt><dd>${service.last_check ? escape(date(service.last_check)) : "No checks recorded"}</dd></div></dl><p class="tooltip-help">${status === "unknown" ? "Current availability cannot be confirmed." : "Based on the latest service check."}${service.response_time != null && status !== "unknown" ? ` Response time: ${Math.round(service.response_time)} ms.` : ""}</p>`;
+      body = `<dl class="tooltip-times"><div><dt>Check</dt><dd>${service.last_check ? escape(date(service.last_check)) : "No checks recorded"}</dd></div></dl><p class="tooltip-help">${status === "unknown" ? "Current availability cannot be confirmed." : stale(service) ? "No fresh checks. Missing observations count as downtime." : "Based on the latest service check."}${service.response_time != null && status !== "unknown" && !stale(service) ? ` Response time: ${Math.round(service.response_time)} ms.` : ""}</p>`;
     }
     tooltip.dataset.status = status;
-    tooltip.innerHTML = `<div class="tooltip-service">${escape(service.name)}</div><div class="tooltip-status is-${status}"><i class="state-dot ${status}" aria-hidden="true"></i>${heading}</div>${body}`;
+    tooltip.innerHTML = `<div class="tooltip-service">${escape(service.name)}</div><div class="tooltip-status is-${status}"><i class="state-dot ${status}" aria-hidden="true"></i>${heading}</div>${body}<p class="tooltip-help">Esc or tap outside to dismiss.</p>`;
     tooltip.hidden = false;
     anchor.setAttribute("aria-describedby", "status-tooltip");
     anchor.classList.add("is-selected");
@@ -289,20 +288,20 @@
           .map((event) => {
             const outage = event.kind === "outage",
               open = !event.ended_at;
-            const title = outage
-              ? event.items.length > 1
-                ? "Service outages"
-                : name({ name: event.items[0].service_name })
-              : "No observations";
-            const subtitle = `${event.items.length} ${event.items.length === 1 ? "service" : "services"}${outage ? " affected" : " without check data"}`;
             const missing = event.items.some(
               (item) => item.unobserved_seconds > 0,
             );
+            const title = missing ? "System outage" : outage
+              ? event.items.length > 1
+                ? "Overlapping service outages"
+                : name({ name: event.items[0].service_name })
+              : "No observations";
+            const subtitle = `${event.items.length} ${event.items.length === 1 ? "service" : "services"}${outage ? " affected" : " without check data"}`;
             const key = eventKey(event);
-            return `<details class="event" data-event="${escape(key)}"${expanded.has(key) ? " open" : ""}><summary><span class="event-date">${escape(date(event.started_at, "event"))}</span><span class="event-title">${escape(title)}<span class="event-subtitle">${subtitle}</span></span><span class="event-duration">${duration(event.duration_seconds)}${open ? "+" : ""}</span><span class="event-status ${open && outage ? "open" : ""}">${open ? (outage ? "Unresolved" : "Open gap") : outage ? "Recovered" : "Checks resumed"}</span><span class="event-toggle" aria-hidden="true">+</span></summary><div class="event-body"><p class="event-range">${outage ? "Started" : "Unobserved from"}: ${escape(date(event.started_at))}<br>${outage ? "Recovered" : "Checks resumed"}: ${event.ended_at ? escape(date(event.ended_at)) : "Not recorded"}</p><p class="event-note">${outage ? `From the first failed check to recovery${open ? " (no recovery recorded yet)" : ""}. ${event.items.length > 1 ? "Grouped from the first failure to the last recovery. " : ""}Cause unknown.${missing ? " Some checks are missing, so the full interval may not have been downtime." : ""}` : "No checks were recorded. Availability during this gap is unknown."}</p>${event.items.map((item) => `<div class="event-service"><strong>${escape(item.service_name)}</strong><span>${escape(date(item.started_at))}<br>→ ${item.ended_at ? escape(date(item.ended_at)) : "No recovery recorded"} · ${duration(item.duration_seconds)}</span></div>`).join("")}</div></details>`;
+            return `<details class="event" data-event="${escape(key)}"${expanded.has(key) ? " open" : ""}><summary><span class="event-date">${escape(date(event.started_at, "event"))}</span><span class="event-title">${escape(title)}<span class="event-subtitle">${subtitle}</span></span><span class="event-duration">${duration(event.duration_seconds)}${open ? "+" : ""}</span><span class="event-status ${open && outage ? "open" : ""}">${open ? "Unresolved" : "Recovered"}</span><span class="event-toggle" aria-hidden="true">+</span></summary><div class="event-body"><p class="event-range">Started: ${escape(date(event.started_at))}<br>Recovered: ${event.ended_at ? escape(date(event.ended_at)) : "Not recorded"}</p><p class="event-note">${missing ? "The system stopped recording observations. Missing checks after the freshness deadline are included in downtime." : `First failed check to first successful check${open ? " (no recovery recorded yet)" : ""}. Cause not established by HTTP checks.`} ${event.items.length > 1 ? "Duration spans the earliest outage start to the latest recovery in this group." : ""}</p>${event.items.map((item) => `<div class="event-service"><strong>${escape(item.service_name)}</strong><span>${escape(date(item.started_at))}<br>→ ${item.ended_at ? escape(date(item.ended_at)) : "No recovery recorded"} · ${duration(item.duration_seconds)}</span></div>`).join("")}</div></details>`;
           })
           .join("")
-      : '<div class="empty">No recorded outages or observation gaps.</div>';
+      : '<div class="empty">No recorded outages.</div>';
     $("show-more").hidden = visibleEvents >= events.length;
   }
   function render() {
@@ -370,7 +369,7 @@
       error = true;
       $("connection-notice").hidden = false;
       $("connection-notice").textContent =
-        "Could not refresh status. History below is from the last update; current availability is unknown.";
+        "Could not refresh status. Check your connection or retry. Any history below is the last data received; current health is unconfirmed.";
       renderHealth();
       if (!data) {
         $("services").setAttribute("aria-busy", "false");
@@ -410,7 +409,8 @@
       $("services").innerHTML =
         '<div class="empty">Loading service history…</div>';
       $("services").setAttribute("aria-busy", "true");
-      $("events").innerHTML = '<div class="empty">Loading history…</div>';
+      $("events").innerHTML =
+        '<div class="empty">Loading recorded events…</div>';
       $("window-label").textContent = "Loading selected window…";
       $("notable-event").hidden = true;
       $("show-more").hidden = true;

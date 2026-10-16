@@ -1,4 +1,4 @@
-"""Time-based status reporting. Missing checks are unknown, never healthy."""
+"""Time-based status reporting. Missing checks after their deadline are downtime."""
 import asyncio
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
@@ -74,7 +74,7 @@ def timeline(parts, start, end, count=96):
 
 
 def counted_segments(checks, start, end, incidents):
-    """Ignore short failures without clipping a longer outage at the window edge."""
+    """Count observation gaps as downtime and ignore brief observed failures."""
     context_start = min(start, utc(checks[0][0])) if checks else start
     raw = segments(checks, context_start, end)
     result = []
@@ -90,6 +90,8 @@ def counted_segments(checks, start, end, incidents):
                 qualifies = (right - left).total_seconds() > MIN_OUTAGE_SECONDS
             if not qualifies:
                 state = "up"
+        elif state == "unknown":
+            state = "down"
         left, right = max(left, start), min(right, end)
         if left >= right:
             continue
@@ -98,6 +100,25 @@ def counted_segments(checks, start, end, incidents):
         else:
             result.append((left, right, state))
     return result
+
+
+def merge_outages(events, raw_parts):
+    """Unify recorded failures and missing checks without counting overlaps twice."""
+    merged = []
+    for event in sorted(events, key=lambda e: e["started_at"]):
+        if merged and event["started_at"] <= merged[-1]["through"]:
+            previous = merged[-1]
+            previous["through"] = max(previous["through"], event["through"])
+            previous["ended_at"] = (None if previous["ended_at"] is None or event["ended_at"] is None
+                                     else previous["through"])
+        else:
+            merged.append(dict(event))
+    for event in merged:
+        event["duration_seconds"] = (event["through"] - event["started_at"]).total_seconds()
+        event["unobserved_seconds"] = sum(
+            max(0, (min(b, event["through"]) - max(a, event["started_at"])).total_seconds())
+            for a, b, state in raw_parts if state == "unknown")
+    return merged
 
 
 def group_events(events):
@@ -132,53 +153,53 @@ def build_payload(services, rows, latest, incidents, start, now, history="all", 
     incidents_by_service = defaultdict(list)
     for incident in incidents:
         incidents_by_service[incident.service_id].append(incident)
-    output, events, parts_by_id = [], [], {}
+    output, events = [], []
     for service in services:
+        raw_parts = segments(by_service[service.id], start, now)
         parts = counted_segments(by_service[service.id], start, now, incidents_by_service[service.id])
-        parts_by_id[service.id] = parts
         totals = {state: sum((b - a).total_seconds() for a, b, s in parts if s == state)
                   for state in ("up", "down", "unknown")}
+        missing = sum((b - a).total_seconds() for a, b, state in raw_parts if state == "unknown")
         check = latest.get(service.id)
         fresh = check is not None and 0 <= (now - utc(check.timestamp)).total_seconds() < STALE_SECONDS
-        observed = totals["up"] + totals["down"]
-        current_status = check.status if fresh and check.status in ("up", "down") else "unknown"
-        if current_status == "down" and (not parts or parts[-1][2] != "down"):
+        elapsed = (now - start).total_seconds()
+        current_status = check.status if fresh and check.status in ("up", "down") else "down"
+        if fresh and current_status == "down" and (not parts or parts[-1][2] != "down"):
             current_status = "checking"
         output.append({"id": service.id, "name": service.name,
                        "hostname": urlsplit(service.url).hostname,
                        "status": current_status,
                        "last_check": iso(check.timestamp) if check else None,
                        "response_time": check.response_time if fresh else None,
-                       "uptime": totals["up"] / observed * 100 if observed else None,
-                       "coverage": observed / (now - start).total_seconds() * 100,
+                       "uptime": totals["up"] / elapsed * 100 if elapsed else None,
+                       "coverage": (elapsed - missing) / elapsed * 100 if elapsed else 0,
                        "down_seconds": round(totals["down"], 2),
                        "unknown_seconds": round(totals["unknown"], 2),
+                       "unobserved_seconds": round(missing, 2),
                        "timeline": timeline(parts, start, now)})
-        for a, b, state in parts:
-            if state == "unknown" and (b - a).total_seconds() >= STALE_SECONDS:
-                events.append({"kind": "gap", "service_id": service.id, "service_name": service.name,
+        service_events = []
+        for a, b, state in raw_parts:
+            if state == "unknown":
+                service_events.append({"kind": "outage", "service_id": service.id, "service_name": service.name,
                                "started_at": a, "ended_at": b if b < now else None, "through": b,
-                               "duration_seconds": (b - a).total_seconds(), "unobserved_seconds": (b - a).total_seconds()})
-    names = {s.id: s.name for s in services}
-    for incident in incidents:
-        begin = utc(incident.started_at)
-        finish = utc(incident.ended_at) if incident.ended_at else now
-        if (finish - begin).total_seconds() <= MIN_OUTAGE_SECONDS:
-            continue
-        if history == "window" and finish < start:
-            continue
-        missing = sum(max(0, (min(b, finish) - max(a, begin)).total_seconds())
-                      for a, b, state in parts_by_id[incident.service_id] if state == "unknown")
-        events.append({"kind": "outage", "service_id": incident.service_id,
-                       "service_name": names[incident.service_id], "started_at": begin,
-                       "ended_at": utc(incident.ended_at) if incident.ended_at else None,
-                       "through": finish, "duration_seconds": max(0, (finish - begin).total_seconds()),
-                       "unobserved_seconds": missing})
+                               "duration_seconds": (b - a).total_seconds()})
+        for incident in incidents_by_service[service.id]:
+            begin = utc(incident.started_at)
+            finish = utc(incident.ended_at) if incident.ended_at else now
+            if (finish - begin).total_seconds() <= MIN_OUTAGE_SECONDS:
+                continue
+            if history == "window" and finish < start:
+                continue
+            service_events.append({"kind": "outage", "service_id": service.id,
+                           "service_name": service.name, "started_at": begin,
+                           "ended_at": utc(incident.ended_at) if incident.ended_at else None,
+                           "through": finish, "duration_seconds": max(0, (finish - begin).total_seconds())})
+        events.extend(merge_outages(service_events, raw_parts))
     return {"generated_at": iso(now), "window_start": iso(start), "window_end": iso(now),
             "stale_after_seconds": STALE_SECONDS, "check_interval_seconds": settings.CHECK_INTERVAL,
             "minimum_outage_seconds": MIN_OUTAGE_SECONDS,
             "history_scope": history,
-            "history_started_at": iso(min((utc(i.started_at) for i in incidents), default=None)),
+            "history_started_at": iso(min((e["started_at"] for e in events), default=None)),
             "checks_started_at": iso(checks_started_at),
             "services": output, "events": group_events(events)}
 

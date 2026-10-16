@@ -14,8 +14,11 @@
       rel="icon"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='8' fill='%23172925'/%3E%3Cpath d='M8 22h6l4-10 5 17 4-7h5' fill='none' stroke='%23eff4df' stroke-width='3'/%3E%3C/svg%3E"
     />
-    <link rel="stylesheet" href="/assets/status-history.css?v=20260926-1" />
-    <script src="/assets/status-history.js?v=20260926-1" defer></script>
+    <link
+      rel="stylesheet"
+      href="/assets/status-history.css?v=20260926-1"
+    />
+    <script src="/assets/status-history.js?v=20261013-1" defer></script>
   </head>
   <body>
     <div class="page">
@@ -72,8 +75,7 @@
           <div class="table-key">
             <div class="legend">
               <span><i class="key up"></i> Reachable</span
-              ><span><i class="key down"></i> Unreachable</span
-              ><span><i class="key unknown"></i> No observations</span>
+              ><span><i class="key down"></i> Downtime</span>
             </div>
             <div class="metric-headings">
               <span>Uptime</span><span>Downtime</span>
@@ -83,7 +85,7 @@
             <div class="empty">Loading service history…</div>
           </div>
           <div id="timeline-detail" role="status" hidden></div>
-          <p class="method-note">Outages of a minute or less are excluded.</p>
+          <p class="method-note">Failed checks lasting a minute or less are excluded. Missing observations count as downtime once checks become stale.</p>
         </section>
 
         <section class="outages" aria-labelledby="outages-title">
@@ -110,7 +112,7 @@
             </div>
           </div>
           <div id="events">
-            <div class="empty">Loading history…</div>
+            <div class="empty">Loading recorded events…</div>
           </div>
           <button class="more-button" id="show-more" type="button" hidden>
             Show more events
@@ -120,11 +122,13 @@
           <summary>About this data</summary>
           <p>
             Detailed checks cover the last 30 days. The outage archive includes
-            every retained incident lasting more than a minute.
+            every retained incident lasting more than a minute, plus missing
+            observations within the detailed check window.
           </p>
           <p>
-            Missing observations are excluded from uptime. Grouped outages
-            overlap in time; that does not establish a shared cause.
+            Missing observations count as system downtime after the three-minute
+            freshness deadline. Overlapping failed checks and missing observations
+            are combined into a single outage for each service.
           </p>
         </details>
       </main>
